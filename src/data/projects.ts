@@ -1,7 +1,8 @@
 import { Project } from '@/constants/types';
 import { developers } from './developers';
+import { getProjectImages } from './images';
 
-export const projects: Project[] = [
+const rawProjects: Project[] = [
   {
     id: 'proj-001',
     name: 'Prestige Green Acres',
@@ -722,6 +723,12 @@ export const projects: Project[] = [
     appreciationPct: 20,
   },
 ];
+
+// Replace placeholder images with stable, type-appropriate real-estate photos.
+export const projects: Project[] = rawProjects.map((p, i) => ({
+  ...p,
+  images: getProjectImages(p.type, i),
+}));
 
 export const getFeaturedProjects = () => projects.filter(p => p.investmentScore >= 85);
 export const getProjectById = (id: string) => projects.find(p => p.id === id);

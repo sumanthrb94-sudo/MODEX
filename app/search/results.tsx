@@ -33,7 +33,8 @@ export default function SearchResultsScreen() {
             value={filters.query}
             onChangeText={setQuery}
             onSubmit={() => {}}
-            placeholder="Search projects..."
+            placeholder="Search area, project, developer..."
+            autoFocus={!filters.query}
           />
         </View>
       </View>

@@ -11,11 +11,35 @@ interface Props {
   onFocus?: () => void;
   readOnly?: boolean;
   onPress?: () => void;
+  autoFocus?: boolean;
 }
 
-export default function SearchBar({ value, onChangeText, onSubmit, placeholder, onFocus, readOnly, onPress }: Props) {
+export default function SearchBar({
+  value,
+  onChangeText,
+  onSubmit,
+  placeholder,
+  onFocus,
+  readOnly,
+  onPress,
+  autoFocus,
+}: Props) {
+  // Read-only mode: the whole bar is a button that navigates elsewhere.
+  if (readOnly) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.container}>
+        <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.icon} />
+        <View style={styles.input}>
+          <PlaceholderText text={placeholder ?? 'Search area, project, or developer...'} />
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // Editable mode: render the TextInput directly (NOT wrapped in a touchable),
+  // otherwise the touchable swallows focus/keystrokes on web.
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={readOnly ? 0.7 : 1} style={styles.container}>
+    <View style={styles.container}>
       <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.icon} />
       <TextInput
         value={value}
@@ -25,15 +49,30 @@ export default function SearchBar({ value, onChangeText, onSubmit, placeholder, 
         style={styles.input}
         onSubmitEditing={onSubmit}
         returnKeyType="search"
-        editable={!readOnly}
         onFocus={onFocus}
+        autoFocus={autoFocus}
+        autoCorrect={false}
+        autoCapitalize="none"
       />
-      {value.length > 0 && !readOnly && (
-        <TouchableOpacity onPress={() => onChangeText('')}>
+      {value.length > 0 && (
+        <TouchableOpacity onPress={() => onChangeText('')} hitSlop={8}>
           <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
+  );
+}
+
+function PlaceholderText({ text }: { text: string }) {
+  return (
+    <TextInput
+      editable={false}
+      pointerEvents="none"
+      value=""
+      placeholder={text}
+      placeholderTextColor={Colors.textMuted}
+      style={styles.placeholderInput}
+    />
   );
 }
 
@@ -55,6 +94,12 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   input: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.textPrimary,
+    padding: 0,
+  },
+  placeholderInput: {
     flex: 1,
     fontSize: 15,
     color: Colors.textPrimary,
