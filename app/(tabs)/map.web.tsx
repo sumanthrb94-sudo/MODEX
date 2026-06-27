@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import maplibregl from 'maplibre-gl';
 import { Colors } from '@/constants/colors';
 import { useSearch } from '@/hooks/useSearch';
+import { useSearchStore } from '@/store/searchStore';
 import { formatPrice, propertyTypeLabel } from '@/utils/format';
 import { aqiCategory, noiseCategory, livabilityCategory } from '@/data/environment';
 import { Project } from '@/constants/types';
@@ -71,6 +72,7 @@ function popupHTML(p: Project): string {
 export default function MapWebScreen() {
   const insets = useSafeAreaInsets();
   const { projects } = useSearch();
+  const { filters, resetFilters } = useSearchStore();
   const router = useRouter();
   const [activeArea, setActiveArea] = useState('All');
   const [localQ, setLocalQ] = useState('');
@@ -87,6 +89,13 @@ export default function MapWebScreen() {
       p.location.area.toLowerCase().includes(localQ.toLowerCase());
     return areaMatch && qMatch;
   });
+
+  // Surface filters carried over from search so the map shows what was searched.
+  const activeChips: string[] = [];
+  if (filters.query) activeChips.push(`"${filters.query}"`);
+  filters.types.forEach((t) => activeChips.push(propertyTypeLabel(t)));
+  filters.possessionStatus.forEach((s) => activeChips.push(s.replace('_', ' ')));
+  if (filters.maxPrice < 150000000) activeChips.push(`under ${formatPrice(filters.maxPrice)}`);
 
   // Initialise the map once.
   useEffect(() => {
@@ -219,6 +228,18 @@ export default function MapWebScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {activeChips.length > 0 && (
+          <View style={styles.activeBar}>
+            <Ionicons name="filter" size={13} color={Colors.gold} />
+            <Text style={styles.activeText} numberOfLines={1}>
+              From search: {activeChips.join(' · ')}
+            </Text>
+            <TouchableOpacity onPress={resetFilters} hitSlop={8}>
+              <Text style={styles.activeClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* The 3D map */}
@@ -314,6 +335,13 @@ const styles = StyleSheet.create({
   areaPillActive: { backgroundColor: Colors.gold, borderColor: Colors.gold },
   areaPillText: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' },
   areaPillTextActive: { color: Colors.primary, fontWeight: '700' },
+  activeBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(201,168,76,0.15)', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 7,
+  },
+  activeText: { flex: 1, fontSize: 12, color: Colors.white, fontWeight: '500' },
+  activeClear: { fontSize: 12, fontWeight: '700', color: Colors.gold },
   mapWrap: { flex: 1.25, position: 'relative', backgroundColor: '#dfe3e8' },
   map: { flex: 1 } as any,
   mapFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },

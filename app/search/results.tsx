@@ -37,6 +37,10 @@ export default function SearchResultsScreen() {
             autoFocus={!filters.query}
           />
         </View>
+        <TouchableOpacity style={styles.mapBtn} onPress={() => router.push('/map')}>
+          <Ionicons name="map" size={18} color={Colors.white} />
+          <Text style={styles.mapBtnText}>Map</Text>
+        </TouchableOpacity>
       </View>
 
       <FilterBar onOpenFilters={() => setFilterVisible(true)} resultCount={total} />
@@ -88,6 +92,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchWrap: { flex: 1 },
+  mapBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.primary, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 9,
+  },
+  mapBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
   list: { padding: 16 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
