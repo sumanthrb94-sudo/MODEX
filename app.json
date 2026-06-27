@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "MODEX",
+    "slug": "modex",
+    "version": "1.0.0",
+    "scheme": "modex",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#0A1628"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.modex.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0A1628"
+      },
+      "package": "com.modex.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      ["react-native-maps", { "googleMapsApiKey": "" }]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
