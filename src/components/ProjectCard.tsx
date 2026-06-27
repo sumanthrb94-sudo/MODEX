@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,8 +10,6 @@ import { Project } from '@/constants/types';
 import { useSavedStore } from '@/store/savedStore';
 import { formatPrice, possessionLabel, possessionColor } from '@/utils/format';
 import PropertyImage from '@/components/PropertyImage';
-
-const CARD_WIDTH = Dimensions.get('window').width - 32;
 
 interface Props {
   project: Project;
@@ -124,7 +122,11 @@ export default function ProjectCard({ project, compact, horizontal }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    width: CARD_WIDTH,
+    // Fill the padded parent container (results/saved lists, home card list)
+    // rather than a window-derived fixed width, so cards always align with the
+    // section headers and each other across mobile and the centered web frame.
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: Colors.surface,
     borderRadius: 16,
     overflow: 'hidden',
@@ -136,12 +138,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cardCompact: {
-    width: 240,
-    marginRight: 12,
+    // Fixed width for the horizontal "Top Picks" carousel.
+    width: 260,
+    alignSelf: 'auto',
+    marginRight: 14,
     marginBottom: 0,
   },
   cardHorizontal: {
-    width: CARD_WIDTH,
+    width: '100%',
     flexDirection: 'row',
     height: 120,
     marginBottom: 12,

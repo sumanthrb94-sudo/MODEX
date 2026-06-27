@@ -153,9 +153,11 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
-          {nearby.map((p) => (
-            <ProjectCard key={p.id} project={p} />
-          ))}
+          <View style={styles.cardList}>
+            {nearby.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
+          </View>
         </View>
       </ScrollView>
 
@@ -235,6 +237,7 @@ const styles = StyleSheet.create({
   typeFilterWrap: { marginBottom: 4 },
   seeAll: { fontSize: 13, fontWeight: '600', color: Colors.gold, paddingHorizontal: 16 },
   carouselContent: { paddingHorizontal: 16, gap: 0 },
+  cardList: { paddingHorizontal: 16 },
   statsBanner: {
     marginHorizontal: 16,
     marginTop: 24,
