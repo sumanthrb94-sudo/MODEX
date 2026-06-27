@@ -26,8 +26,10 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.tabBackground,
           borderTopColor: Colors.border,
-          height: 58 + insets.bottom,
-          paddingBottom: 6 + insets.bottom,
+          // Use a minimum bottom padding because mobile web often reports a
+          // 0 safe-area inset, which would let the OS gesture bar clip labels.
+          height: 60 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
