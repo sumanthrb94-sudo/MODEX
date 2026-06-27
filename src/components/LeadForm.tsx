@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Modal, View, Text, StyleSheet, TextInput, TouchableOpacity, Linking, Image, ScrollView,
+  Modal, View, Text, StyleSheet, TextInput, TouchableOpacity, Linking, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useLeadStore } from '@/store/leadStore';
 import { Executive, LeadType, Project } from '@/constants/types';
+import PropertyImage from '@/components/PropertyImage';
 
 interface Props {
   visible: boolean;
@@ -108,7 +109,7 @@ export default function LeadForm({ visible, onClose, type, project, executive }:
 
               {executive && (
                 <View style={styles.execRow}>
-                  <Image source={{ uri: executive.photo }} style={styles.execPhoto} />
+                  <PropertyImage uri={executive.photo} style={styles.execPhoto} fallbackIcon="person" iconSize={20} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.execName}>{executive.name}</Text>
                     <Text style={styles.execRole}>{executive.role}</Text>

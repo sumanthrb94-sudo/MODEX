@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { Executive } from '@/constants/types';
+import PropertyImage from '@/components/PropertyImage';
 
 interface Props {
   executive: Executive;
@@ -13,7 +14,7 @@ export default function ExecutiveCard({ executive, onEnquire }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
-        <Image source={{ uri: executive.photo }} style={styles.photo} />
+        <PropertyImage uri={executive.photo} style={styles.photo} fallbackIcon="person" iconSize={26} />
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{executive.name}</Text>
           <Text style={styles.role}>{executive.role}</Text>

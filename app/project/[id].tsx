@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Linking, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Linking, Dimensions,
 } from 'react-native';
+import PropertyImage from '@/components/PropertyImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,7 +77,7 @@ export default function ProjectDetailScreen() {
               setActiveImage(idx);
             }}
             renderItem={({ item }) => (
-              <Image source={{ uri: item }} style={[styles.galleryImage, { width: galleryWidth }]} resizeMode="cover" />
+              <PropertyImage uri={item} type={project.type} style={[styles.galleryImage, { width: galleryWidth }]} />
             )}
           />
           <LinearGradient colors={Gradients.heroOverlay} style={styles.galleryGradient} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, Image, TouchableOpacity, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import { Colors, Gradients } from '@/constants/colors';
 import { Project } from '@/constants/types';
 import { useSavedStore } from '@/store/savedStore';
 import { formatPrice, possessionLabel, possessionColor } from '@/utils/format';
+import PropertyImage from '@/components/PropertyImage';
 
 const CARD_WIDTH = Dimensions.get('window').width - 32;
 
@@ -37,10 +38,10 @@ export default function ProjectCard({ project, compact, horizontal }: Props) {
       onPress={() => router.push(`/project/${project.id}`)}
     >
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: project.images[0] }}
+        <PropertyImage
+          uri={project.images[0]}
+          type={project.type}
           style={styles.image}
-          resizeMode="cover"
         />
         <LinearGradient colors={Gradients.cardOverlay} style={styles.gradient} />
 
