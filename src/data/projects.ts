@@ -1,6 +1,7 @@
 import { Project } from '@/constants/types';
 import { developers } from './developers';
 import { getProjectImages } from './images';
+import { getEnvironment } from './environment';
 
 const rawProjects: Project[] = [
   {
@@ -724,10 +725,11 @@ const rawProjects: Project[] = [
   },
 ];
 
-// Replace placeholder images with stable, type-appropriate real-estate photos.
+// Enrich each project with stable, type-appropriate images and livability data.
 export const projects: Project[] = rawProjects.map((p, i) => ({
   ...p,
   images: getProjectImages(p.type, i),
+  environment: getEnvironment(p.type, i),
 }));
 
 export const getFeaturedProjects = () => projects.filter(p => p.investmentScore >= 85);

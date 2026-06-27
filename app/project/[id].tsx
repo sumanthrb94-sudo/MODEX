@@ -17,6 +17,7 @@ import TravelTimeWidget from '@/components/TravelTimeWidget';
 import ExecutiveCard from '@/components/ExecutiveCard';
 import LeadForm from '@/components/LeadForm';
 import { LeadType } from '@/constants/types';
+import { aqiCategory, noiseCategory, livabilityCategory } from '@/data/environment';
 
 const NEARBY_ICONS: Record<string, any> = {
   airport: 'airplane',
@@ -274,6 +275,54 @@ export default function ProjectDetailScreen() {
           </View>
         )}
 
+        {/* Livability & Environment */}
+        {project.environment && (
+          <View style={styles.section}>
+            <View style={styles.livHeaderRow}>
+              <Text style={styles.sectionTitle}>Livability & Environment</Text>
+              {(() => {
+                const liv = livabilityCategory(project.environment.livabilityScore);
+                return (
+                  <View style={[styles.livScorePill, { backgroundColor: liv.color }]}>
+                    <Text style={styles.livScoreNum}>{project.environment.livabilityScore}</Text>
+                    <Text style={styles.livScoreLabel}>{liv.label}</Text>
+                  </View>
+                );
+              })()}
+            </View>
+            <View style={styles.envRow}>
+              {(() => {
+                const aq = aqiCategory(project.environment.aqi);
+                return (
+                  <View style={styles.envCard}>
+                    <Ionicons name="cloud-outline" size={20} color={aq.color} />
+                    <Text style={[styles.envNum, { color: aq.color }]}>{project.environment.aqi}</Text>
+                    <Text style={styles.envLabel}>AQI · {aq.label}</Text>
+                  </View>
+                );
+              })()}
+              {(() => {
+                const ns = noiseCategory(project.environment.noiseDb);
+                return (
+                  <View style={styles.envCard}>
+                    <Ionicons name="volume-medium-outline" size={20} color={ns.color} />
+                    <Text style={[styles.envNum, { color: ns.color }]}>{project.environment.noiseDb} dB</Text>
+                    <Text style={styles.envLabel}>Noise · {ns.label}</Text>
+                  </View>
+                );
+              })()}
+              <View style={styles.envCard}>
+                <Ionicons name="leaf-outline" size={20} color={Colors.success} />
+                <Text style={[styles.envNum, { color: Colors.success }]}>{project.environment.greenCoverPct}%</Text>
+                <Text style={styles.envLabel}>Green Cover</Text>
+              </View>
+            </View>
+            <Text style={styles.envNote}>
+              Livability blends air quality, ambient noise and green cover around this location.
+            </Text>
+          </View>
+        )}
+
         {/* Nearby Places */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nearby Landmarks</Text>
@@ -488,6 +537,19 @@ const styles = StyleSheet.create({
   nearbyDist: { fontSize: 12, color: Colors.textMuted },
   nearbyTime: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   nearbyTimeText: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  livHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  livScorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  livScoreNum: { fontSize: 15, fontWeight: '800', color: Colors.white },
+  livScoreLabel: { fontSize: 11, fontWeight: '600', color: Colors.white },
+  envRow: { flexDirection: 'row', gap: 10 },
+  envCard: {
+    flex: 1, alignItems: 'center', gap: 5,
+    backgroundColor: Colors.offWhite, borderRadius: 12, paddingVertical: 14,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  envNum: { fontSize: 17, fontWeight: '800' },
+  envLabel: { fontSize: 10, color: Colors.textMuted, textAlign: 'center' },
+  envNote: { fontSize: 11, color: Colors.textMuted, marginTop: 10, lineHeight: 16 },
   interiorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.primary, marginHorizontal: 16, marginTop: 12,

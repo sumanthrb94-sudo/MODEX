@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import maplibregl from 'maplibre-gl';
 import { Colors } from '@/constants/colors';
 import { useSearch } from '@/hooks/useSearch';
-import { useSearchStore } from '@/store/searchStore';
-import { formatPrice, propertyTypeLabel, possessionLabel, possessionColor } from '@/utils/format';
-import { Project, PropertyType } from '@/constants/types';
+import { formatPrice, propertyTypeLabel } from '@/utils/format';
+import { aqiCategory, noiseCategory, livabilityCategory } from '@/data/environment';
+import { Project } from '@/constants/types';
 
 const TYPE_COLORS: Record<string, string> = {
   villa: '#2ECC71',
@@ -29,50 +30,56 @@ const TYPE_ICONS: Record<string, any> = {
   standalone: 'key',
 };
 
-function openOSM(project: Project) {
-  const { lat, lng } = project.location.coordinates;
-  Linking.openURL(
-    `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=15&layers=M`,
-  );
-}
-
-function ProjectRow({ project }: { project: Project }) {
-  const router = useRouter();
-  return (
-    <View style={styles.projectRow}>
-      <View style={[styles.typeDot, { backgroundColor: TYPE_COLORS[project.type] ?? Colors.primary }]}>
-        <Ionicons name={TYPE_ICONS[project.type]} size={14} color={Colors.white} />
-      </View>
-      <View style={styles.projectInfo}>
-        <Text style={styles.projectName} numberOfLines={1}>{project.name}</Text>
-        <Text style={styles.projectArea}>{project.location.area} · {propertyTypeLabel(project.type)}</Text>
-        <Text style={styles.projectPrice}>{formatPrice(project.pricing.minPrice)} onwards</Text>
-      </View>
-      <View style={styles.projectActions}>
-        <TouchableOpacity style={styles.mapLink} onPress={() => openOSM(project)}>
-          <Ionicons name="navigate" size={14} color={Colors.primary} />
-          <Text style={styles.mapLinkText}>Map</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.detailLink} onPress={() => router.push(`/project/${project.id}`)}>
-          <Text style={styles.detailLinkText}>View</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.gold} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
+const HYD_CENTER: [number, number] = [78.4400, 17.3600];
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
 const AREAS = [
   'All', 'Kokapet', 'Financial District', 'Narsingi', 'Tukkuguda',
   'Shamshabad', 'Chevella', 'Shankarpally', 'Shadnagar', 'Gachibowli', 'Jubilee Hills',
 ];
 
+function popupHTML(p: Project): string {
+  const env = p.environment;
+  const liv = env ? livabilityCategory(env.livabilityScore) : null;
+  const aq = env ? aqiCategory(env.aqi) : null;
+  const ns = env ? noiseCategory(env.noiseDb) : null;
+  const chip = (label: string, value: string, color: string) =>
+    `<div style="flex:1;text-align:center;padding:6px 4px;background:${color}14;border-radius:8px">
+       <div style="font-size:13px;font-weight:800;color:${color}">${value}</div>
+       <div style="font-size:9px;color:#5A6478;letter-spacing:.3px">${label}</div>
+     </div>`;
+  return `
+    <div style="width:236px;font-family:system-ui,-apple-system,sans-serif">
+      <div style="position:relative;height:118px">
+        <img src="${p.images[0]}" style="width:100%;height:100%;object-fit:cover" />
+        <div style="position:absolute;top:8px;left:8px;background:${TYPE_COLORS[p.type]};color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.4px">${propertyTypeLabel(p.type)}</div>
+      </div>
+      <div style="padding:10px 12px 12px">
+        <div style="font-size:14px;font-weight:800;color:#0A1628">${p.name}</div>
+        <div style="font-size:11px;color:#9BA3AF;margin:2px 0 6px">${p.location.area}, ${p.location.city}</div>
+        <div style="font-size:15px;font-weight:800;color:#0A1628;margin-bottom:8px">${formatPrice(p.pricing.minPrice)} <span style="font-size:11px;font-weight:500;color:#9BA3AF">onwards</span></div>
+        ${env ? `<div style="display:flex;gap:6px;margin-bottom:10px">
+          ${chip('LIVABILITY', String(env.livabilityScore), liv!.color)}
+          ${chip('AQI', String(env.aqi), aq!.color)}
+          ${chip('NOISE', env.noiseDb + 'dB', ns!.color)}
+        </div>` : ''}
+        <button data-project="${p.id}" style="width:100%;background:#0A1628;color:#fff;border:none;border-radius:9px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">View Property →</button>
+      </div>
+    </div>`;
+}
+
 export default function MapWebScreen() {
   const insets = useSafeAreaInsets();
   const { projects } = useSearch();
+  const router = useRouter();
   const [activeArea, setActiveArea] = useState('All');
   const [localQ, setLocalQ] = useState('');
-  const { setQuery } = useSearchStore();
+  const [mapError, setMapError] = useState(false);
+
+  const mapContainer = useRef<any>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const [mapReady, setMapReady] = useState(false);
 
   const displayed = projects.filter((p) => {
     const areaMatch = activeArea === 'All' || p.location.area.toLowerCase().includes(activeArea.toLowerCase());
@@ -81,17 +88,106 @@ export default function MapWebScreen() {
     return areaMatch && qMatch;
   });
 
-  const byArea = displayed.reduce<Record<string, Project[]>>((acc, p) => {
-    const key = p.location.area;
-    acc[key] = acc[key] ?? [];
-    acc[key].push(p);
-    return acc;
-  }, {});
+  // Initialise the map once.
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current) return;
+    try {
+      const map = new maplibregl.Map({
+        container: mapContainer.current as HTMLElement,
+        style: STYLE_URL,
+        center: HYD_CENTER,
+        zoom: 10.2,
+        pitch: 48, // 3D tilt
+        bearing: -17,
+        attributionControl: { compact: true },
+      });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+      map.on('load', () => {
+        // Reveal 3D building extrusions when zoomed in.
+        try {
+          const layers = map.getStyle().layers ?? [];
+          const has3D = layers.some((l) => l.id === '3d-buildings');
+          if (!has3D) {
+            const labelLayer = layers.find((l) => l.type === 'symbol');
+            map.addLayer(
+              {
+                id: '3d-buildings',
+                source: 'openmaptiles',
+                'source-layer': 'building',
+                type: 'fill-extrusion',
+                minzoom: 13,
+                paint: {
+                  'fill-extrusion-color': '#c7cdd6',
+                  'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 12],
+                  'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+                  'fill-extrusion-opacity': 0.85,
+                },
+              },
+              labelLayer?.id,
+            );
+          }
+        } catch {
+          /* style without building layer — fine, skip 3D buildings */
+        }
+        setMapReady(true);
+      });
+      map.on('error', () => {
+        // Tile/style load failures shouldn't crash the screen.
+      });
+      mapRef.current = map;
+    } catch {
+      setMapError(true);
+    }
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
-  const typeCounts = projects.reduce<Record<string, number>>((acc, p) => {
-    acc[p.type] = (acc[p.type] ?? 0) + 1;
-    return acc;
-  }, {});
+  // (Re)draw markers when the filtered list changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    displayed.forEach((p) => {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        display:flex;align-items:center;gap:4px;
+        background:${TYPE_COLORS[p.type] ?? '#0A1628'};
+        color:#fff;font:700 11px system-ui,sans-serif;
+        padding:5px 9px;border-radius:20px;cursor:pointer;
+        box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;white-space:nowrap;`;
+      el.textContent = formatPrice(p.pricing.minPrice);
+
+      const popupEl = document.createElement('div');
+      popupEl.innerHTML = popupHTML(p);
+      const btn = popupEl.querySelector('button');
+      if (btn) btn.addEventListener('click', () => router.push(`/project/${p.id}`));
+
+      const popup = new maplibregl.Popup({ offset: 18, closeButton: true, maxWidth: '260px' }).setDOMContent(popupEl);
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([p.location.coordinates.lng, p.location.coordinates.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      el.addEventListener('click', () => {
+        // Fly in close with a strong 3D tilt to reveal buildings.
+        map.flyTo({
+          center: [p.location.coordinates.lng, p.location.coordinates.lat],
+          zoom: 15.5,
+          pitch: 62,
+          bearing: -20,
+          duration: 1400,
+        });
+      });
+
+      markersRef.current.push(marker);
+    });
+  }, [displayed, mapReady, router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -100,10 +196,8 @@ export default function MapWebScreen() {
         <View style={styles.headerTop}>
           <Ionicons name="map" size={22} color={Colors.white} />
           <Text style={styles.headerTitle}>Project Map</Text>
-          <Text style={styles.headerCount}>{projects.length} projects in Hyderabad</Text>
+          <Text style={styles.headerCount}>{displayed.length} shown</Text>
         </View>
-
-        {/* Search */}
         <View style={styles.searchRow}>
           <Ionicons name="search" size={16} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
@@ -114,65 +208,87 @@ export default function MapWebScreen() {
             onChangeText={setLocalQ}
           />
         </View>
-
-        {/* Type chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
-          {Object.entries(typeCounts).map(([type, count]) => (
-            <View key={type} style={[styles.typeChip, { borderColor: TYPE_COLORS[type] }]}>
-              <View style={[styles.typeChipDot, { backgroundColor: TYPE_COLORS[type] }]} />
-              <Text style={styles.typeChipText}>{propertyTypeLabel(type)} ({count})</Text>
-            </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.areaFilter}>
+          {AREAS.map((a) => (
+            <TouchableOpacity
+              key={a}
+              style={[styles.areaPill, activeArea === a && styles.areaPillActive]}
+              onPress={() => setActiveArea(a)}
+            >
+              <Text style={[styles.areaPillText, activeArea === a && styles.areaPillTextActive]}>{a}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* OSM embed notice + link */}
-      <View style={styles.mapNotice}>
-        <Ionicons name="information-circle-outline" size={16} color={Colors.info} />
-        <Text style={styles.mapNoticeText}>
-          Map view is optimised for mobile. On web, browse projects by area below or
-        </Text>
-        <TouchableOpacity onPress={() =>
-          Linking.openURL('https://www.openstreetmap.org/#map=11/17.3850/78.4867')
-        }>
-          <Text style={styles.mapNoticeLink}> open Hyderabad on OpenStreetMap ↗</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Area filter pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.areaFilter}>
-        {AREAS.map((a) => (
-          <TouchableOpacity
-            key={a}
-            style={[styles.areaPill, activeArea === a && styles.areaPillActive]}
-            onPress={() => setActiveArea(a)}
-          >
-            <Text style={[styles.areaPillText, activeArea === a && styles.areaPillTextActive]}>{a}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Project list grouped by area */}
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {Object.keys(byArea).length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="search-outline" size={48} color={Colors.border} />
-            <Text style={styles.emptyText}>No projects match your search</Text>
+      {/* The 3D map */}
+      <View style={styles.mapWrap}>
+        {mapError ? (
+          <View style={styles.mapFallback}>
+            <Ionicons name="map-outline" size={40} color={Colors.border} />
+            <Text style={styles.mapFallbackText}>Interactive map needs WebGL. Browse the list below.</Text>
           </View>
         ) : (
-          Object.entries(byArea).map(([area, areaProjects]) => (
-            <View key={area} style={styles.areaGroup}>
-              <View style={styles.areaHeader}>
-                <Ionicons name="location" size={15} color={Colors.gold} />
-                <Text style={styles.areaTitle}>{area}</Text>
-                <Text style={styles.areaCount}>{areaProjects.length} project{areaProjects.length > 1 ? 's' : ''}</Text>
-              </View>
-              {areaProjects.map((p) => (
-                <ProjectRow key={p.id} project={p} />
-              ))}
-            </View>
-          ))
+          <View ref={mapContainer} style={styles.map} />
         )}
+        <View style={styles.legend}>
+          {Object.entries(TYPE_COLORS).map(([type, color]) => (
+            <View key={type} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: color }]} />
+              <Text style={styles.legendText}>{propertyTypeLabel(type)}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Browsable list (also a fallback) */}
+      <ScrollView style={styles.listWrap} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        <Text style={styles.listHeader}>Tap a marker for livability details · or browse below</Text>
+        {displayed.map((p) => {
+          const env = p.environment;
+          const liv = env ? livabilityCategory(env.livabilityScore) : null;
+          return (
+            <TouchableOpacity
+              key={p.id}
+              style={styles.row}
+              activeOpacity={0.85}
+              onPress={() => {
+                const map = mapRef.current;
+                if (map) {
+                  map.flyTo({
+                    center: [p.location.coordinates.lng, p.location.coordinates.lat],
+                    zoom: 15.5, pitch: 62, bearing: -20, duration: 1400,
+                  });
+                }
+              }}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: TYPE_COLORS[p.type] }]}>
+                <Ionicons name={TYPE_ICONS[p.type]} size={15} color={Colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowName} numberOfLines={1}>{p.name}</Text>
+                <Text style={styles.rowArea}>{p.location.area} · {formatPrice(p.pricing.minPrice)}</Text>
+              </View>
+              {env && liv && (
+                <View style={[styles.livBadge, { backgroundColor: liv.color + '1A', borderColor: liv.color }]}>
+                  <Text style={[styles.livNum, { color: liv.color }]}>{env.livabilityScore}</Text>
+                  <Text style={styles.livLabel}>Livability</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.viewBtn} onPress={() => router.push(`/project/${p.id}`)}>
+                <Text style={styles.viewBtnText}>View</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.gold} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity
+          style={styles.osmLink}
+          onPress={() => Linking.openURL('https://www.openstreetmap.org/#map=11/17.3850/78.4867')}
+        >
+          <Ionicons name="open-outline" size={14} color={Colors.info} />
+          <Text style={styles.osmLinkText}>Open Hyderabad on OpenStreetMap</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -180,135 +296,53 @@ export default function MapWebScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.offWhite },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 12,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 12,
-  },
+  header: { backgroundColor: Colors.primary, paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.white, flex: 1 },
   headerCount: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  typeRow: { gap: 8 },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  typeChipDot: { width: 8, height: 8, borderRadius: 4 },
-  typeChipText: { fontSize: 12, fontWeight: '500', color: Colors.white },
-  mapNotice: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: Colors.info + '12',
-    borderBottomWidth: 1,
-    borderColor: Colors.info + '30',
-  },
-  mapNoticeText: { fontSize: 12, color: Colors.textSecondary, flexShrink: 1 },
-  mapNoticeLink: { fontSize: 12, fontWeight: '600', color: Colors.info },
-  areaFilter: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderColor: Colors.border,
-  },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, outlineStyle: 'none' } as any,
+  areaFilter: { gap: 6, paddingVertical: 2 },
   areaPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: Colors.offWhite,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: 13, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  areaPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  areaPillText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
-  areaPillTextActive: { color: Colors.white },
-  list: { padding: 12, gap: 12, paddingBottom: 32 },
-  areaGroup: {
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+  areaPillActive: { backgroundColor: Colors.gold, borderColor: Colors.gold },
+  areaPillText: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' },
+  areaPillTextActive: { color: Colors.primary, fontWeight: '700' },
+  mapWrap: { flex: 1.25, position: 'relative', backgroundColor: '#dfe3e8' },
+  map: { flex: 1 } as any,
+  mapFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
+  mapFallbackText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+  legend: {
+    position: 'absolute', left: 10, bottom: 10,
+    backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 10, padding: 8, gap: 4,
+    flexDirection: 'row', flexWrap: 'wrap', maxWidth: 230,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
   },
-  areaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    backgroundColor: Colors.offWhite,
-    borderBottomWidth: 1,
-    borderColor: Colors.border,
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4, width: 104 },
+  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  legendText: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500' },
+  listWrap: { flex: 1, backgroundColor: Colors.offWhite },
+  list: { padding: 12, paddingBottom: 28, gap: 8 },
+  listHeader: { fontSize: 11, color: Colors.textMuted, marginBottom: 4, paddingHorizontal: 2 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.white, borderRadius: 12, padding: 10,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4,
   },
-  areaTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, flex: 1 },
-  areaCount: { fontSize: 12, color: Colors.textMuted },
-  projectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderColor: Colors.border,
-  },
-  typeDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  projectInfo: { flex: 1 },
-  projectName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  projectArea: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
-  projectPrice: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 3 },
-  projectActions: { flexDirection: 'column', alignItems: 'flex-end', gap: 6 },
-  mapLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  mapLinkText: { fontSize: 11, fontWeight: '600', color: Colors.primary },
-  detailLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  detailLinkText: { fontSize: 12, fontWeight: '600', color: Colors.gold },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: Colors.textMuted },
+  rowIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  rowName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  rowArea: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  livBadge: { alignItems: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  livNum: { fontSize: 14, fontWeight: '800' },
+  livLabel: { fontSize: 8, color: Colors.textMuted, letterSpacing: 0.2 },
+  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: Colors.gold },
+  osmLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+  osmLinkText: { fontSize: 12, fontWeight: '600', color: Colors.info },
 });

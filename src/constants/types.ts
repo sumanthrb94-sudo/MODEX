@@ -69,6 +69,15 @@ export interface Project {
   investmentScore: number;
   rentalYield?: number;
   appreciationPct?: number;
+  environment?: Environment;
+}
+
+// Livability intelligence — the differentiator vs. plain listing portals.
+export interface Environment {
+  aqi: number; // Air Quality Index (lower is better)
+  noiseDb: number; // ambient noise level in decibels (lower is quieter)
+  greenCoverPct: number; // % green cover around the project
+  livabilityScore: number; // 0-100 composite (higher is better)
 }
 
 export interface SearchFilters {
