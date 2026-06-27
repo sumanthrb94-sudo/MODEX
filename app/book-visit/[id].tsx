@@ -57,9 +57,7 @@ export default function BookVisitScreen() {
       `Hi, I'd like to book a ${visitType === 'virtual' ? 'virtual tour' : 'site visit'} for *${project.name}*\n\nDate: ${dateObj.dayLabel}, ${dateObj.label} Jun 2026\nTime: ${selectedTime}\nName: ${name}\nPhone: ${phone}`,
     );
     const devPhone = project.developer.phone.replace(/\D/g, '');
-    Linking.openURL(`whatsapp://send?phone=${devPhone}&text=${msg}`).catch(() => {
-      Alert.alert('WhatsApp not found', 'Please install WhatsApp to book via message.');
-    });
+    Linking.openURL(`https://wa.me/${devPhone}?text=${msg}`);
   };
 
   return (

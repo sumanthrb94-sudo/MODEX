@@ -53,7 +53,7 @@ export default function ProjectDetailScreen() {
   const whatsApp = () => {
     const phone = project.developer.phone.replace(/\D/g, '');
     const msg = encodeURIComponent(`Hi, I'm interested in ${project.name}. Please share more details.`);
-    Linking.openURL(`whatsapp://send?phone=${phone}&text=${msg}`);
+    Linking.openURL(`https://wa.me/${phone}?text=${msg}`);
   };
 
   return (
