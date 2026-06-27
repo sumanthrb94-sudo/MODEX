@@ -10,6 +10,7 @@ import { Colors, Gradients } from '@/constants/colors';
 import SearchBar from '@/components/SearchBar';
 import PropertyTypeFilter from '@/components/PropertyTypeFilter';
 import ProjectCard from '@/components/ProjectCard';
+import LeadForm from '@/components/LeadForm';
 import { useSearchStore } from '@/store/searchStore';
 import { getFeaturedProjects, projects } from '@/data/projects';
 import { PropertyType } from '@/constants/types';
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { toggleType, filters } = useSearchStore();
+  const [interiorOpen, setInteriorOpen] = useState(false);
 
   const goToResults = (q?: string) => {
     if (q) {
@@ -123,6 +125,26 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* Interior Services */}
+        <TouchableOpacity
+          style={styles.interiorBanner}
+          activeOpacity={0.9}
+          onPress={() => setInteriorOpen(true)}
+        >
+          <View style={styles.interiorIcon}>
+            <Ionicons name="color-palette" size={24} color={Colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.interiorTitle}>MODEX Interiors</Text>
+            <Text style={styles.interiorText}>
+              Turnkey interior design for your new home. Free consultation.
+            </Text>
+          </View>
+          <View style={styles.interiorCta}>
+            <Text style={styles.interiorCtaText}>Get Quote</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Explore Nearby */}
         <View style={[styles.section, styles.sectionLast]}>
           <View style={styles.sectionHeader}>
@@ -137,7 +159,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Compare FAB */}
+      <LeadForm visible={interiorOpen} onClose={() => setInteriorOpen(false)} type="interior" />
     </View>
   );
 }
@@ -226,4 +248,22 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 22, fontWeight: '800', color: Colors.primary },
   statLabel: { fontSize: 11, fontWeight: '500', color: Colors.primaryMuted },
   statDivider: { width: 1, height: 32, backgroundColor: Colors.primaryMuted + '40' },
+  interiorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.primary,
+    marginHorizontal: 16, marginTop: 24,
+    borderRadius: 16, padding: 16,
+  },
+  interiorIcon: {
+    width: 48, height: 48, borderRadius: 12,
+    backgroundColor: 'rgba(201,168,76,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  interiorTitle: { fontSize: 16, fontWeight: '700', color: Colors.white },
+  interiorText: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2, lineHeight: 16 },
+  interiorCta: {
+    backgroundColor: Colors.gold, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  interiorCtaText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 });

@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { getProjectById } from '@/data/projects';
+import { useLeadStore } from '@/store/leadStore';
 import { formatPrice } from '@/utils/format';
 
 const TIME_SLOTS = ['10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM'];
@@ -36,9 +37,10 @@ export default function BookVisitScreen() {
   const router = useRouter();
 
   const project = getProjectById(id as string);
+  const addLead = useLeadStore((s) => s.addLead);
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [visitType, setVisitType] = useState('physical');
+  const [visitType, setVisitType] = useState<'physical' | 'virtual'>('physical');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -47,17 +49,37 @@ export default function BookVisitScreen() {
   if (!project) return null;
 
   const handleBook = () => {
-    if (!selectedDate || !selectedTime || !name.trim() || !phone.trim()) {
-      Alert.alert('Missing Details', 'Please fill in all fields to book your visit.');
+    if (selectedDate === null || !selectedTime || name.trim().length < 2 || phone.replace(/\D/g, '').length < 10) {
+      Alert.alert('Missing Details', 'Please fill in your name, a valid phone number, and pick a date & time.');
       return;
     }
 
     const dateObj = dates[selectedDate];
+    const visitDate = `${dateObj.dayLabel}, ${dateObj.label} Jun 2026`;
+
+    // Record into the unified lead pipeline.
+    addLead({
+      type: 'site_visit',
+      name: name.trim(),
+      phone: phone.trim(),
+      projectId: project.id,
+      projectName: project.name,
+      visitDate,
+      visitTime: selectedTime,
+      visitMode: visitType,
+    });
+
     const msg = encodeURIComponent(
-      `Hi, I'd like to book a ${visitType === 'virtual' ? 'virtual tour' : 'site visit'} for *${project.name}*\n\nDate: ${dateObj.dayLabel}, ${dateObj.label} Jun 2026\nTime: ${selectedTime}\nName: ${name}\nPhone: ${phone}`,
+      `Hi, I'd like to book a ${visitType === 'virtual' ? 'virtual tour' : 'site visit'} for *${project.name}*\n\nDate: ${visitDate}\nTime: ${selectedTime}\nName: ${name}\nPhone: ${phone}`,
     );
     const devPhone = project.developer.phone.replace(/\D/g, '');
-    Linking.openURL(`https://wa.me/${devPhone}?text=${msg}`);
+    Linking.openURL(`https://wa.me/${devPhone}?text=${msg}`).catch(() => {});
+
+    Alert.alert(
+      'Visit Requested!',
+      `Your ${visitType === 'virtual' ? 'virtual tour' : 'site visit'} for ${project.name} on ${visitDate} at ${selectedTime} has been logged. Our team will confirm shortly.`,
+      [{ text: 'Done', onPress: () => router.back() }],
+    );
   };
 
   return (
@@ -91,7 +113,7 @@ export default function BookVisitScreen() {
               <TouchableOpacity
                 key={vt.id}
                 style={[styles.visitTypeBtn, visitType === vt.id && styles.visitTypeBtnActive]}
-                onPress={() => setVisitType(vt.id)}
+                onPress={() => setVisitType(vt.id as 'physical' | 'virtual')}
               >
                 <Ionicons
                   name={vt.icon as any}

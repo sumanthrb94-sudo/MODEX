@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Gradients } from '@/constants/colors';
 import { useSavedStore } from '@/store/savedStore';
+import { useLeadStore } from '@/store/leadStore';
+import { LeadType } from '@/constants/types';
 
 const MENU_ITEMS = [
   { icon: 'location-outline', label: 'Saved Locations', sub: 'Manage your commute locations' },
@@ -15,9 +17,18 @@ const MENU_ITEMS = [
   { icon: 'information-circle-outline', label: 'About MODEX', sub: 'Version 1.0.0' },
 ];
 
+const LEAD_META: Record<LeadType, { icon: string; label: string; color: string }> = {
+  enquiry: { icon: 'chatbox-ellipses', label: 'Enquiry', color: Colors.info },
+  callback: { icon: 'call', label: 'Callback', color: Colors.warning },
+  site_visit: { icon: 'calendar', label: 'Site Visit', color: Colors.success },
+  interior: { icon: 'color-palette', label: 'Interior', color: Colors.gold },
+};
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { savedIds } = useSavedStore();
+  const { leads, removeLead } = useLeadStore();
+  const visitCount = leads.filter((l) => l.type === 'site_visit').length;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -35,18 +46,49 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
-            <Text style={styles.statNum}>3</Text>
+            <Text style={styles.statNum}>{visitCount}</Text>
             <Text style={styles.statLabel}>Site Visits</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
-            <Text style={styles.statNum}>20+</Text>
-            <Text style={styles.statLabel}>Projects</Text>
+            <Text style={styles.statNum}>{leads.length}</Text>
+            <Text style={styles.statLabel}>Enquiries</Text>
           </View>
         </View>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {/* My Enquiries — the unified lead pipeline */}
+        {leads.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardHeader}>My Enquiries</Text>
+            {leads.map((lead) => {
+              const meta = LEAD_META[lead.type];
+              return (
+                <View key={lead.id} style={[styles.menuItem, styles.menuItemBorder]}>
+                  <View style={[styles.leadIcon, { backgroundColor: meta.color + '18' }]}>
+                    <Ionicons name={meta.icon as any} size={18} color={meta.color} />
+                  </View>
+                  <View style={styles.menuText}>
+                    <Text style={styles.menuLabel}>
+                      {meta.label}
+                      {lead.projectName ? ` · ${lead.projectName}` : ''}
+                    </Text>
+                    <Text style={styles.menuSub}>
+                      {lead.type === 'site_visit' && lead.visitDate
+                        ? `${lead.visitDate} at ${lead.visitTime}`
+                        : `Status: ${lead.status}`}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeLead(lead.id)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         <View style={styles.card}>
           {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
@@ -124,11 +166,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemBorder: { borderBottomWidth: 1, borderColor: Colors.border },
+  cardHeader: {
+    fontSize: 14, fontWeight: '700', color: Colors.textPrimary,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4,
+  },
   menuIcon: {
     width: 40,
     height: 40,
     borderRadius: 10,
     backgroundColor: Colors.offWhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leadIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },

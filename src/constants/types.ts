@@ -89,3 +89,37 @@ export interface SavedLocation {
   coordinates: Coordinates;
   icon: string;
 }
+
+// A MODEX relationship manager / sales executive shown to buyers, MagicBricks-style.
+export interface Executive {
+  id: string;
+  name: string;
+  role: string;
+  photo: string;
+  rating: number;
+  dealsClosed: number;
+  experienceYears: number;
+  languages: string[];
+  specialization: PropertyType[];
+  phone: string;
+}
+
+// Every buyer interaction funnels into one unified lead pipeline.
+export type LeadType = 'enquiry' | 'site_visit' | 'callback' | 'interior';
+
+export interface Lead {
+  id: string;
+  type: LeadType;
+  name: string;
+  phone: string;
+  projectId?: string;
+  projectName?: string;
+  executiveId?: string;
+  message?: string;
+  // For site visits
+  visitDate?: string;
+  visitTime?: string;
+  visitMode?: 'physical' | 'virtual';
+  createdAt: number;
+  status: 'new' | 'contacted' | 'scheduled';
+}

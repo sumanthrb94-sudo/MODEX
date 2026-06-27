@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Linking,
+  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList, Linking, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Gradients } from '@/constants/colors';
-import { getProjectById } from '@/data/projects';
+import { getProjectById, projects } from '@/data/projects';
+import { getExecutiveForProject } from '@/data/executives';
 import { useSavedStore } from '@/store/savedStore';
 import { formatPrice, possessionLabel, possessionColor, propertyTypeLabel } from '@/utils/format';
 import InvestmentScore from '@/components/InvestmentScore';
 import TravelTimeWidget from '@/components/TravelTimeWidget';
+import ExecutiveCard from '@/components/ExecutiveCard';
+import LeadForm from '@/components/LeadForm';
+import { LeadType } from '@/constants/types';
 
 const NEARBY_ICONS: Record<string, any> = {
   airport: 'airplane',
@@ -30,6 +34,8 @@ export default function ProjectDetailScreen() {
   const { toggleSave, isSaved } = useSavedStore();
   const { savedLocations } = useSavedStore();
   const [activeImage, setActiveImage] = useState(0);
+  const [galleryWidth, setGalleryWidth] = useState(Dimensions.get('window').width);
+  const [leadType, setLeadType] = useState<LeadType | null>(null);
 
   const project = getProjectById(id as string);
 
@@ -45,10 +51,8 @@ export default function ProjectDetailScreen() {
   }
 
   const saved = isSaved(project.id);
-
-  const callDeveloper = () => {
-    Linking.openURL(`tel:${project.developer.phone}`);
-  };
+  const projectIndex = projects.findIndex((p) => p.id === project.id);
+  const executive = getExecutiveForProject(project.type, projectIndex);
 
   const whatsApp = () => {
     const phone = project.developer.phone.replace(/\D/g, '');
@@ -60,7 +64,7 @@ export default function ProjectDetailScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Image Gallery */}
-        <View style={styles.gallery}>
+        <View style={styles.gallery} onLayout={(e) => setGalleryWidth(e.nativeEvent.layout.width)}>
           <FlatList
             data={project.images}
             horizontal
@@ -72,7 +76,7 @@ export default function ProjectDetailScreen() {
               setActiveImage(idx);
             }}
             renderItem={({ item }) => (
-              <Image source={{ uri: item }} style={styles.galleryImage} resizeMode="cover" />
+              <Image source={{ uri: item }} style={[styles.galleryImage, { width: galleryWidth }]} resizeMode="cover" />
             )}
           />
           <LinearGradient colors={Gradients.heroOverlay} style={styles.galleryGradient} />
@@ -299,6 +303,30 @@ export default function ProjectDetailScreen() {
           />
         </View>
 
+        {/* Your MODEX Advisor */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your MODEX Advisor</Text>
+          <ExecutiveCard executive={executive} onEnquire={() => setLeadType('enquiry')} />
+        </View>
+
+        {/* Interior Services */}
+        <TouchableOpacity
+          style={styles.interiorBanner}
+          activeOpacity={0.9}
+          onPress={() => setLeadType('interior')}
+        >
+          <View style={styles.interiorIcon}>
+            <Ionicons name="color-palette" size={22} color={Colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.interiorTitle}>MODEX Interiors</Text>
+            <Text style={styles.interiorText}>
+              Get this home interior-ready. Free design consultation & quote.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.gold} />
+        </TouchableOpacity>
+
         {/* Developer */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Developer</Text>
@@ -326,9 +354,9 @@ export default function ProjectDetailScreen() {
 
       {/* Bottom CTA */}
       <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity style={styles.callBtn} onPress={callDeveloper}>
+        <TouchableOpacity style={styles.callBtn} onPress={() => setLeadType('callback')}>
           <Ionicons name="call" size={18} color={Colors.primary} />
-          <Text style={styles.callBtnText}>Call</Text>
+          <Text style={styles.callBtnText}>Callback</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.waBtn} onPress={whatsApp}>
           <Ionicons name="logo-whatsapp" size={18} color={Colors.white} />
@@ -342,6 +370,14 @@ export default function ProjectDetailScreen() {
           <Text style={styles.visitBtnText}>Book Visit</Text>
         </TouchableOpacity>
       </View>
+
+      <LeadForm
+        visible={leadType !== null}
+        onClose={() => setLeadType(null)}
+        type={leadType ?? 'enquiry'}
+        project={project}
+        executive={executive}
+      />
     </View>
   );
 }
@@ -350,7 +386,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.offWhite },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   gallery: { height: 300, position: 'relative' },
-  galleryImage: { width: 375, height: 300 },
+  galleryImage: { height: 300 },
   galleryGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },
   dots: {
     position: 'absolute', bottom: 14, left: 0, right: 0,
@@ -451,6 +487,18 @@ const styles = StyleSheet.create({
   nearbyDist: { fontSize: 12, color: Colors.textMuted },
   nearbyTime: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   nearbyTimeText: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  interiorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.primary, marginHorizontal: 16, marginTop: 12,
+    borderRadius: 16, padding: 16,
+  },
+  interiorIcon: {
+    width: 46, height: 46, borderRadius: 12,
+    backgroundColor: 'rgba(201,168,76,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  interiorTitle: { fontSize: 15, fontWeight: '700', color: Colors.white },
+  interiorText: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2, lineHeight: 16 },
   developerCard: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   devAvatarWrap: {
     width: 52, height: 52, borderRadius: 26,
