@@ -109,7 +109,7 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.footer}>MODEX · Real Estate Discovery Platform</Text>
-        <Text style={styles.footerSub}>Data for Hyderabad region · build 2026.06.27-b</Text>
+        <Text style={styles.footerSub}>Data for Hyderabad region · build 2026.06.27-c</Text>
       </ScrollView>
     </View>
   );

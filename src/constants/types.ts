@@ -80,6 +80,33 @@ export interface Environment {
   livabilityScore: number; // 0-100 composite (higher is better)
 }
 
+// Area / locality intelligence — the core asset: "understand the area before you buy".
+export interface AreaInfra {
+  name: string;
+  type: 'metro' | 'road' | 'airport' | 'it_park' | 'social';
+  status: 'operational' | 'under_construction' | 'planned';
+  eta?: string;
+  impact?: string;
+}
+
+export interface Area {
+  name: string;
+  tagline: string;
+  summary: string;
+  projectCount: number;
+  minPrice: number;
+  maxPrice: number;
+  avgPricePerSqft: number;
+  avgLivability: number;
+  avgAppreciation: number;
+  growthScore: number; // 0-100 momentum/outlook
+  schools: number;
+  hospitals: number;
+  itParks: number;
+  priceTrend: number[]; // price/sqft over recent quarters (oldest -> latest)
+  infrastructure: AreaInfra[];
+}
+
 export interface SearchFilters {
   query: string;
   types: PropertyType[];

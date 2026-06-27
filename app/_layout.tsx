@@ -24,6 +24,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.offWhite } }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="project/[id]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+              <Stack.Screen name="area/[name]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
               <Stack.Screen name="search/results" options={{ presentation: 'card', animation: 'slide_from_right' }} />
               <Stack.Screen name="compare/index" options={{ presentation: 'card' }} />
               <Stack.Screen name="book-visit/[id]" options={{ presentation: 'modal' }} />

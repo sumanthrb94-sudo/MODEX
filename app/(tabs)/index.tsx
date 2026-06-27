@@ -13,8 +13,11 @@ import ProjectCard from '@/components/ProjectCard';
 import LeadForm from '@/components/LeadForm';
 import { useSearchStore } from '@/store/searchStore';
 import { getFeaturedProjects, projects } from '@/data/projects';
+import { getAllAreas } from '@/data/areas';
 import { PropertyType } from '@/constants/types';
 import { formatPrice } from '@/utils/format';
+
+const trendingAreas = getAllAreas().slice(0, 6);
 
 const featured = getFeaturedProjects().slice(0, 5);
 const nearby = projects.slice(0, 6);
@@ -87,6 +90,48 @@ export default function HomeScreen() {
               }}
             />
           </View>
+        </View>
+
+        {/* Explore Areas — location-first */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Explore Areas</Text>
+            <Text style={styles.sectionHint}>Understand before you buy</Text>
+          </View>
+          <FlatList
+            data={trendingAreas}
+            keyExtractor={(a) => a.name}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.areaCarousel}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.areaCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/area/${encodeURIComponent(item.name)}`)}
+              >
+                <View style={styles.areaCardTop}>
+                  <Ionicons name="location" size={14} color={Colors.gold} />
+                  <Text style={styles.areaCardName} numberOfLines={1}>{item.name}</Text>
+                </View>
+                <Text style={styles.areaCardTagline} numberOfLines={2}>{item.tagline}</Text>
+                <View style={styles.areaCardStats}>
+                  <View>
+                    <Text style={styles.areaCardNum}>{item.growthScore}</Text>
+                    <Text style={styles.areaCardLabel}>Growth</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.areaCardNum}>+{item.avgAppreciation}%</Text>
+                    <Text style={styles.areaCardLabel}>p.a.</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.areaCardNum}>{item.projectCount}</Text>
+                    <Text style={styles.areaCardLabel}>Projects</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
         </View>
 
         {/* Featured Projects */}
@@ -236,7 +281,23 @@ const styles = StyleSheet.create({
   },
   typeFilterWrap: { marginBottom: 4 },
   seeAll: { fontSize: 13, fontWeight: '600', color: Colors.gold, paddingHorizontal: 16 },
+  sectionHint: { fontSize: 12, fontStyle: 'italic', color: Colors.textMuted, paddingHorizontal: 16 },
   carouselContent: { paddingHorizontal: 16, gap: 0 },
+  areaCarousel: { paddingHorizontal: 16, gap: 12 },
+  areaCard: {
+    width: 180, backgroundColor: Colors.white, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: Colors.border,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  },
+  areaCardTop: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  areaCardName: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, flex: 1 },
+  areaCardTagline: { fontSize: 11, color: Colors.textMuted, lineHeight: 15, height: 30, marginBottom: 10 },
+  areaCardStats: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    borderTopWidth: 1, borderColor: Colors.border, paddingTop: 10,
+  },
+  areaCardNum: { fontSize: 15, fontWeight: '800', color: Colors.primary },
+  areaCardLabel: { fontSize: 9, color: Colors.textMuted, marginTop: 1 },
   cardList: { paddingHorizontal: 16 },
   statsBanner: {
     marginHorizontal: 16,

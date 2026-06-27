@@ -10,6 +10,7 @@ import ProjectCard from '@/components/ProjectCard';
 import { useSearch } from '@/hooks/useSearch';
 import { useSearchStore } from '@/store/searchStore';
 import { useSavedStore } from '@/store/savedStore';
+import { getAreaByName } from '@/data/areas';
 import { TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,6 +21,7 @@ export default function SearchResultsScreen() {
   const { projects, total } = useSearch();
   const [filterVisible, setFilterVisible] = useState(false);
   const { compareIds } = useSavedStore();
+  const matchedArea = filters.query ? getAreaByName(filters.query.trim()) : undefined;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -42,6 +44,25 @@ export default function SearchResultsScreen() {
           <Text style={styles.mapBtnText}>Map</Text>
         </TouchableOpacity>
       </View>
+
+      {matchedArea && (
+        <TouchableOpacity
+          style={styles.areaBanner}
+          activeOpacity={0.9}
+          onPress={() => router.push(`/area/${encodeURIComponent(matchedArea.name)}`)}
+        >
+          <View style={styles.areaBannerIcon}>
+            <Ionicons name="analytics" size={18} color={Colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.areaBannerTitle}>Explore {matchedArea.name} — Area Intelligence</Text>
+            <Text style={styles.areaBannerSub}>
+              Growth {matchedArea.growthScore} · +{matchedArea.avgAppreciation}% p.a. · infra, livability & trends
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.white} />
+        </TouchableOpacity>
+      )}
 
       <FilterBar onOpenFilters={() => setFilterVisible(true)} resultCount={total} />
 
@@ -98,6 +119,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 9,
   },
   mapBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
+  areaBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.primary, marginHorizontal: 12, marginTop: 10,
+    borderRadius: 12, padding: 12,
+  },
+  areaBannerIcon: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(201,168,76,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
+  areaBannerTitle: { fontSize: 13, fontWeight: '700', color: Colors.white },
+  areaBannerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   list: { padding: 16 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
